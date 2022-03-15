@@ -16,7 +16,7 @@ coh_levels = [0 0.05 0.1 0.2 0.4 0.6]; % note: 0 coherence condition must make u
 
 K_true = [0.2 0.8]; % ground truth base rates of each block
 
-% simulate experimental run with one base rate switch
+% simulate experimental run
 K_tr = [];
 
 for k = 1:length(K_true)
@@ -57,7 +57,7 @@ t = 0:dt:(max_t+dt); % discrete trial time points
 %% Parameters of simulated subject
 % note that the model simulates average subject behaviour
 
-sub_par.K = 0:0.1:1; % base rate belief (assuming subjects down know the ground truth)
+sub_par.K = 0:0.1:1; % base rate belief (assuming subjects dont know the ground truth)
 sub_par.w1 = 1; % parameters shaping prior for extreme values (i.e. extreme base rates perceived less probable a priori)
 sub_par.w2 = 1;
 prior_K_ini = ones(1,length(sub_par.K));
@@ -77,7 +77,7 @@ end
 
 sub_par.kappa = 2.5; % subject-specific drift rate (signal-to-noise)
 drifts = sub_par.kappa * coh_tr; % drift rate for up choice
-sub_par.acc_thresh_decay = 0.5/length(t); % linear rate of decay of the acc threshold over time (when fitting the model this would be a free parameter that determines acc thresh and decision time at 0% motion coherence)
+sub_par.acc_thresh_decay = 0.5/length(t); % linear rate of decay of the acc threshold over time (based on empirical estimates from no bias baseline condition)
 sub_par.acc_weight_target = 1; % speed-accuracy trade-off. 0 = maximise speed, 1 = maximise accuracy given prior on bias. This parameter determines how much a subject aims to adjust their accuracy threshold towards the maximal achievable accuracy (using their bias belief) at baseline (no prior) decision time of each respective coherence level. Note: In the current implementation the desired level may be exceeded given the linear functional form of the assumed accuracy threshold.
 sub_par.use_belief_weight = 0; % use bias belief confidence (probability) to dynamically change S-A trade-off during learning -- not yet implemented
 nsim = 100000; % number of simulated decision variable trajectories used to estimate p(up & correct)
@@ -97,19 +97,28 @@ nsim = 100000; % number of simulated decision variable trajectories used to esti
 %     coh_weights = ones(1,length(coh_levels))./length(coh_levels); % possible weight of different coh levels on S-A adjustment (e.g. because of unequal trial count)
 % end
 
-sub_par.HR_belief = 0.01; % belief about the change frequency in base rates (assumed to be subjective and fixed)
-
-%% plotting options
-
-plot_process = 1; % toggle to plot prior and threshold evolution
+sub_par.HR_belief = 0.01; %0.01 % belief about the change frequency in base rates (assumed to be subjective and fixed)
 
 %% saving options
 
 save_results = 0;
-SAVE_name = 'sim_switch_matchHR_maxSpeed';
+SAVE_name = 'sim_switch_matchHR_maxAcc';
 SAVE_path = '/Users/skowron/Documents/structRDM_modelling/structRDM_model/sim_results';
 
+%% plotting options
+
+plot_process = 1; % toggle to plot prior and threshold evolution
+save_animated_plots = 0;
+
+savefig = 0; % toggle result figures saving
+
 %% Simulate (average) subject behaviour
+
+if plot_process
+   plts = figure;
+   set(plts, 'Position',  [400, 200, 600, 800])
+   axis tight manual
+end
 
 % initialise
 model_allsim.like_right   = nan(1,ntr); % updating term based on counterfactual confidence (see Fig 3C in paper)
@@ -166,7 +175,7 @@ for i = 1:length(coh_tr)  % cycle over trials
         title(['Trial #' num2str(i) newline 'Bias belief'])
         xlabel('base rate up','LineWidth',4)
         ylabel('probability')
-        set(gca,'fontsize', 18);
+        set(gca,'fontsize', 22);
         
         clear y_ax
     end
@@ -200,8 +209,24 @@ for i = 1:length(coh_tr)  % cycle over trials
     model_allsim.pre_thresh_decay(i) = acc_thresh_decay_bias_prev; % accuracy threshold function slope before bias belief update
     model_allsim.acc_weight(i) = acc_weight;
     
-    if plot_process
-       pause(0.01) % pause briefly to update plots 
+    if plot_process    
+       drawnow % update all plots
+       
+       if save_animated_plots
+          
+            % Capture the plot as an image 
+            frame = getframe(plts); 
+            im = frame2im(frame); 
+            [imind,cm] = rgb2ind(im,256);
+            
+            % Write to the GIF File 
+            if i == 1 
+                imwrite(imind,cm,fullfile('sim_animations',[SAVE_name '_process.gif']),'gif', 'Loopcount',inf); 
+            else 
+                imwrite(imind,cm,fullfile('sim_animations',[SAVE_name '_process.gif']),'gif','WriteMode','append'); 
+            end 
+           
+       end
     end
 end
 
@@ -236,7 +261,13 @@ title(['Simulated bias blocks: ' bias_block_str])
 xlabel('trial')
 ylabel('p(choice = correct | unbiased belief)')
 legend(leg);
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
+
+set(gcf, 'Position',  [0, 0, 1440, 900])
+
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_acc_nobias.png'])
+end
 
 pause
 
@@ -259,7 +290,13 @@ xlabel('trial')
 legend({'up motion trial' 'down motion trial'})
 ylabel('p(choice = correct | bias belief)')
 
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
+
+set(gcf, 'Position',  [0, 0, 1440, 900])
+
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_acc_bias.png'])
+end
 
 pause
 
@@ -273,7 +310,6 @@ end
 conf_choice((true_K_tr < 0.5) & (coh_tr == 0)) = 1-conf_choice((true_K_tr < 0.5) & (coh_tr == 0)); % p(choice = block bias congruent)
 
 plot(trial_num(coh_tr == 0),conf_choice(coh_tr == 0),'bo--','LineWidth',4)
-hold on
 
 plot_blocks(block_idx); % plot block markers
 
@@ -281,7 +317,13 @@ title(['Simulated bias blocks: ' bias_block_str newline 'motion strength = 0'])
 xlabel('trial')
 ylabel('p(choice = block bias congruent | bias belief)')
 
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
+
+set(gcf, 'Position',  [0, 0, 1440, 900])
+
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_acc_mot0.png'])
+end
 
 pause
 
@@ -300,7 +342,13 @@ title(['Simulated bias blocks: ' bias_block_str])
 xlabel('trial')
 ylabel('decision time')
 legend(leg);
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
+
+set(gcf, 'Position',  [0, 0, 1440, 900])
+
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_dt.png'])
+end
 
 pause
 
@@ -313,7 +361,13 @@ plot_blocks(block_idx); % plot block markers
 title(['Simulated bias blocks: ' bias_block_str])
 xlabel('trial')
 ylabel('accuracy threshold decay')
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
+
+set(gcf, 'Position',  [0, 0, 1440, 900])
+
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_accThreshDecay.png'])
+end
 
 pause
 
@@ -328,7 +382,13 @@ plot_blocks(block_idx); % plot block markers
 title(['Simulated bias blocks: ' bias_block_str])
 xlabel('trial')
 ylabel('bias belief')
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
+
+set(gcf, 'Position',  [0, 0, 1440, 900])
+
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_biasBelief.png'])
+end
 
 pause
 
@@ -339,10 +399,15 @@ plot_blocks(block_idx); % plot block markers
 title(['Simulated bias blocks: ' bias_block_str])
 xlabel('trial')
 ylabel('bias belief uncertainty')
-set(gca,'fontsize', 18);
+set(gca,'fontsize', 22);
 
+set(gcf, 'Position',  [0, 0, 1440, 900])
 
-%% saving
+if savefig
+    saveas(gcf,['figures_dyn/' SAVE_name '_biasBelief_unc.png'])
+end
+
+% saving
 
 if save_results
    

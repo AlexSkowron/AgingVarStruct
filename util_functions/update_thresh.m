@@ -175,7 +175,7 @@ if plot_process
     title('Accuracy threshold')
     xlabel('time')
     ylabel('accuracy')
-    set(gca,'fontsize', 18);
+    set(gca,'fontsize', 22);
     
     clear time_thresh_base time_thresh_post time_thresh_post_coh
     

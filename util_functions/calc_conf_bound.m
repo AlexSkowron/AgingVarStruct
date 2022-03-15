@@ -109,6 +109,10 @@ if isempty(sub_decision_time_idx)
     sub_decision_time_idx = nt; % due to random noise it can sometimes happen that the accuracy threshold is not reached by the end of the response time window. Maybe there is a more elegant solution to this.
 end
 
+% if drift == 0
+%    pause 
+% end
+
 bound_ev = mean(cev(:,sub_decision_time_idx)); % bound height (accumulated evidence)
 conf = p_up_correct_Bias(sub_decision_time_idx); % confidence at decision time(i.e. p(up = correct | bias))
 like = p_up_correct_noBias(sub_decision_time_idx); % counterfactual confidence / likelihood at decision time (i.e. p(up = correct | bias = 0.5))
