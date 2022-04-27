@@ -42,6 +42,9 @@ acc_thresh_decay_post_coh = zeros(1,length(acc_noBias));
 decision_time_Bias_idx = zeros(1,length(acc_noBias));
 p_choice_bias = zeros(length(acc_noBias),nt); % evolving probability of a bias congruent choice over the course of a trial
 
+%tic
+
+% paralellisation possible here?
 for c = 1:length(acc_thresh_coh)
     
         % compute p(correct) bias case for each option at unbiased decision time assuming that a trial will be bias congruent
@@ -92,6 +95,8 @@ for c = 1:length(acc_thresh_coh)
         
     end    
 end
+
+%toc
 
 % sanity check that all thresholds have been computed correctly
 if length(acc_thresh_decay_post_coh) ~= length(coh_levels)
